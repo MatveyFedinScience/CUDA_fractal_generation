@@ -8,9 +8,7 @@
 #include "kernels.h"
 #include "helpers.h"
 
-
 int main(int argc, char *argv[]) {
-    // TODO flags like rewrite zeroes for coeffs and rewrite coeffs for zeroes
 
     if (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         print_help();
@@ -51,14 +49,10 @@ int main(int argc, char *argv[]) {
         printf("No input file provided, using random initialization\n");
     }
 
-    float xmin = -SQUARE_SIDE/2, xmax = SQUARE_SIDE/2;
-    float ymin = -SQUARE_SIDE/2, ymax = SQUARE_SIDE/2;
-
     Complex coeffs_3d[XFRAC][YFRAC][COEFFS_SIZE];
     Complex zeroes_3d[XFRAC][YFRAC][NUM_ROOTS];
     char names[XFRAC][YFRAC][64];
 
-    // Загрузка первой конфигурации
     if (input_filename1) {
         init_from_file_complex_array(input_filename1, coeffs_3d, zeroes_3d, names);
     } else {
@@ -81,7 +75,7 @@ int main(int argc, char *argv[]) {
     dim3 blockSize(16, 16);
     dim3 gridSize((WIDTH * XFRAC + 15) / 16, (HEIGHT * YFRAC + 15) / 16);
 
-    FRACTAL_KERNEL_FUNCTION<<<gridSize, blockSize>>>(d_image, d_coeffs_3d, d_zeroes_3d, xmin, xmax, ymin, ymax);
+    FRACTAL_KERNEL_FUNCTION<<<gridSize, blockSize>>>(d_image, d_coeffs_3d, d_zeroes_3d);
     cudaDeviceSynchronize();
     cudaMemcpy(h_image1, d_image, WIDTH * HEIGHT * XFRAC * YFRAC * 3, cudaMemcpyDeviceToHost);
 
@@ -89,7 +83,7 @@ int main(int argc, char *argv[]) {
         Complex coeffs_3d2[XFRAC][YFRAC][COEFFS_SIZE];
         Complex zeroes_3d2[XFRAC][YFRAC][NUM_ROOTS];
         char names2[XFRAC][YFRAC][64];
-        
+
         init_from_file_complex_array(input_filename2, coeffs_3d2, zeroes_3d2, names2);
 
         unsigned char *h_image2 = (unsigned char*)malloc(WIDTH * HEIGHT * XFRAC * YFRAC * 3);
@@ -97,7 +91,7 @@ int main(int argc, char *argv[]) {
         cudaMemcpy(d_coeffs_3d, coeffs_3d2, XFRAC * YFRAC * COEFFS_SIZE * sizeof(Complex), cudaMemcpyHostToDevice);
         cudaMemcpy(d_zeroes_3d, zeroes_3d2, XFRAC * YFRAC * NUM_ROOTS * sizeof(Complex), cudaMemcpyHostToDevice);
 
-        FRACTAL_KERNEL_FUNCTION<<<gridSize, blockSize>>>(d_image, d_coeffs_3d, d_zeroes_3d, xmin, xmax, ymin, ymax);
+        FRACTAL_KERNEL_FUNCTION<<<gridSize, blockSize>>>(d_image, d_coeffs_3d, d_zeroes_3d);
         cudaDeviceSynchronize();
         cudaMemcpy(h_image2, d_image, WIDTH * HEIGHT * XFRAC * YFRAC * 3, cudaMemcpyDeviceToHost);
 

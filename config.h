@@ -1,13 +1,19 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define WIDTH (256*8)
-#define HEIGHT (256*8)
+#define WIDTH (256*2)
+#define HEIGHT (256*2)
 #define MAX_ITER 256
 #define MAX_COEFFS 32
-#define SQUARE_SIDE 8.0f
-#define SQUARE_SIDE_CH2 16.0f // Not implement yet TODO
-#define SQUARE_SIDE_CH3 32.0f // Not implement yet TODO
+
+#define SQUARE_SIDE 3.0f
+#define SQUARE_SIDE_CH2 6.0f // Not implement yet TODO
+#define SQUARE_SIDE_CH3 12.0f // Not implement yet TODO
+
+#define CONF_SIDES_VALUES { SQUARE_SIDE, SQUARE_SIDE_CH2, SQUARE_SIDE_CH3 }
+#define CONF_SIDES_COUNT 3
+
+
 #define XFRAC 8
 #define YFRAC 8
 #define COEFFS_SIZE 2

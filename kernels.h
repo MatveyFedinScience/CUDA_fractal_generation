@@ -14,7 +14,6 @@ __device__ Complex complex_power(Complex z, int n);
 __device__ Complex apply_laurent_series(Complex z, Complex *coeffs, int min_power, int max_power);
 
 
-__global__ void mandelbrot_kernel_color(unsigned char *image, Complex *coeffs_3d, Complex *roots,
-                                        float xmin, float xmax, float ymin, float ymax);
+__global__ void mandelbrot_kernel_color(unsigned char *image, Complex *coeffs_3d, Complex *roots);
 
 #endif // KERNELS_H

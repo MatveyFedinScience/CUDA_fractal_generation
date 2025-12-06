@@ -48,30 +48,36 @@ __device__ Complex apply_laurent_series(Complex z, Complex *coeffs, int min_powe
 }
 
 
-__global__ void mandelbrot_kernel_color(unsigned char *image, Complex *coeffs_3d, Complex *roots,
-                                        float xmin, float xmax, float ymin, float ymax) {
+__global__ void mandelbrot_kernel_color(unsigned char *image, Complex *coeffs_3d, Complex *roots) {
 
-        int px = blockIdx.x * blockDim.x + threadIdx.x;
-        int py = blockIdx.y * blockDim.y + threadIdx.y;
+    int px = blockIdx.x * blockDim.x + threadIdx.x;
+    int py = blockIdx.y * blockDim.y + threadIdx.y;
 
-        // РЕКОМЕНДАЦИЯ: Добавить проверку границ массива, чтобы избежать записи
-        // за пределы памяти, если размер сетки не кратен размерам изображения.
-        // if (px >= WIDTH * XFRAC || py >= HEIGHT * YFRAC) return;
+    // if (px >= WIDTH * XFRAC || py >= HEIGHT * YFRAC) return;
+
+    const float sides[CONF_SIDES_COUNT] = CONF_SIDES_VALUES;
+
+    int min_power = MIN_POWER;
+    int max_power = MAX_POWER;
+
+    int ipx = px / WIDTH;
+    int ipy = py / HEIGHT;
+
+    Complex *coeffs = &coeffs_3d[ipx * (YFRAC * COEFFS_SIZE) + ipy * COEFFS_SIZE];
+
+    #pragma unroll
+    for (int i = 0; i < CONF_SIDES_COUNT; i++) {
+        float current_side = sides[i];
+
+        float xmin = -current_side/2, xmax = current_side/2;
+        float ymin = -current_side/2, ymax = current_side/2;
 
         float x0 = xmin + (xmax - xmin) * (px % WIDTH)  / (WIDTH);
         float y0 = ymin + (ymax - ymin) * (py % HEIGHT) / (HEIGHT);
 
-        int min_power = MIN_POWER;
-        int max_power = MAX_POWER;
-
-        int ipx = px / WIDTH;
-        int ipy = py / HEIGHT;
-
         Complex z;
         Complex c = {x0, y0};
         int iter_color = 0;
-
-        Complex *coeffs = &coeffs_3d[ipx * (YFRAC * COEFFS_SIZE) + ipy * COEFFS_SIZE];
 
         // Итерация: z_{n+1} = f(z_n) + c, где f(z) - ряд Лорана
         for (int iteroot = 0; iteroot < NUM_ROOTS; iteroot++){
@@ -81,37 +87,32 @@ __global__ void mandelbrot_kernel_color(unsigned char *image, Complex *coeffs_3d
                                          min_power, max_power);
                 z.real += c.real;
                 z.imag += c.imag;
-                iter_color += (int)(z.real > -10*SQUARE_SIDE / 2) *
-                              (int)(10*SQUARE_SIDE / 2 > z.real) *
-                              (int)(z.imag > -10*SQUARE_SIDE / 2) *
-                              (int)(10*SQUARE_SIDE / 2 > z.imag);
+                iter_color += (int)(z.real > -10 * current_side / 2) *
+                              (int)(10 * current_side / 2 > z.real) *
+                              (int)(z.imag > -10 * current_side / 2) *
+                              (int)(10 * current_side / 2 > z.imag);
 
             }
         }
-//        iter_color = iter_color / NUM_ROOTS; WARNING!!!
-        iter_color = fminf(iter_color, MAX_ITER);
 
-
+        iter_color = fminf(iter_color, MAX_ITER);//for UNITE regions, not mean value!!!
         int idx = (py * WIDTH * XFRAC + px) * 3;
         float t = (float)(MAX_ITER - iter_color) / MAX_ITER;  // Вертикальный градиент
-        image[idx+0] = (unsigned char)(t * 255);
-        image[idx+1] = (unsigned char)(t * 255);
-        image[idx+2] = (unsigned char)(t * 255);
+        image[idx + i] = (unsigned char)(t * 255);
+
+    }
 
 }
 
 
-
+/*
 __global__ void julia_kernel_color(unsigned char *image, Complex *coeffs_3d, Complex *ptr_c,
                                         float xmin, float xmax, float ymin, float ymax) {
 
         int px = blockIdx.x * blockDim.x + threadIdx.x;
         int py = blockIdx.y * blockDim.y + threadIdx.y;
         //CHECK CPTR!!! C IS JUST ONE VALUE VARIABLE!!!!! JUST FOR CONFOG COMPILATION CAPABILITY!!!
-        // РЕКОМЕНДАЦИЯ: Добавить проверку границ массива, чтобы избежать записи
-        // за пределы памяти, если размер сетки не кратен размерам изображения.
-        // if (px >= WIDTH * XFRAC || py >= HEIGHT * YFRAC) return;
-
+        // not worhing!!!
         float x0 = xmin + (xmax - xmin) * (px % WIDTH)  / (WIDTH);
         float y0 = ymin + (ymax - ymin) * (py % HEIGHT) / (HEIGHT);
 
@@ -148,3 +149,4 @@ __global__ void julia_kernel_color(unsigned char *image, Complex *coeffs_3d, Com
         image[idx+2] = (unsigned char)(t * 255);
 
 }
+*/
