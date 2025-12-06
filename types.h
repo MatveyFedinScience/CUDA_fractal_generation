@@ -19,7 +19,6 @@ struct Complex {
     __host__ __device__
     Complex(float r, float i) : real(r), imag(i) {}
 
-    // Этот конструктор только для host кода
     __host__
     Complex(const std::complex<double>& z) 
         : real(static_cast<float>(z.real())), 
@@ -27,13 +26,11 @@ struct Complex {
     {
     }
 
-    // Оператор преобразования только для host кода
     __host__
     operator std::complex<double>() const {
         return std::complex<double>(real, imag);
     }
 
-    // 🔥 ДОПОЛНИТЕЛЬНО: метод для проверки NaN
     __host__ __device__
     bool is_nan() const {
         #ifdef __CUDA_ARCH__

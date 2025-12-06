@@ -1,10 +1,31 @@
+#include <cstring>
 #include <random>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include "helpers.h"
 #include <cmath>
 #include "LaurentSeries.h"
 #include <iostream>
+#include <zlib.h>
+
+
+void generate_names(Complex coeffs_3d[XFRAC][YFRAC][COEFFS_SIZE], char names[XFRAC][YFRAC][64]) {
+
+    for (int i = 0; i < XFRAC; i++) {
+        for (int j = 0; j < YFRAC; j++) {
+
+            unsigned char data[COEFFS_SIZE * sizeof(Complex)];
+            memcpy(data, coeffs_3d[i][j], COEFFS_SIZE * sizeof(Complex));
+
+            uLong crc = crc32(0L, Z_NULL, 0);
+            crc = crc32(crc, data, COEFFS_SIZE * sizeof(Complex));
+
+            snprintf(names[i][j], 64, "%08lx", crc);
+        }
+    }
+}
+
 
 void save_ppm(const char *filename, unsigned char *image, int width, int height) {
     FILE *fp = fopen(filename, "wb");
@@ -19,13 +40,15 @@ void save_ppm(const char *filename, unsigned char *image, int width, int height)
 
 void save_to_csv(const char* filename,
                  Complex coeffs_3d[XFRAC][YFRAC][COEFFS_SIZE],
-                 Complex zeroes_3d[XFRAC][YFRAC][NUM_ROOTS]) {
+                 Complex zeroes_3d[XFRAC][YFRAC][NUM_ROOTS],
+                 char    names[XFRAC][YFRAC][64]) {
     FILE* fp = fopen(filename, "w");
     if (!fp) {
         perror("Ошибка открытия файла");
         return;
     }
-    // Заголовок CSV
+
+    fprintf(fp, "filename,");
     for (int i = 0; i < REGRESSION_PARAMS; i++) {
         if (i < 2 * NUM_ROOTS) {
             if (i % 2 == 0) {
@@ -44,19 +67,21 @@ void save_to_csv(const char* filename,
         if (i < REGRESSION_PARAMS - 1) fprintf(fp, ",");
     }
     fprintf(fp, "\n");
-    
-// Данные
+
     for (int i = 0; i < XFRAC; i++) {
         for (int j = 0; j < YFRAC; j++) {
-            
+
+            //Filename
+            fprintf(fp, "%s,", names[i][j]);
+
             // Zeroes
             for (int k = 0; k < NUM_ROOTS; k++) {
                 fprintf(fp, "%.6f,%.6f", zeroes_3d[i][j][k].real, zeroes_3d[i][j][k].imag);
                 if (k < NUM_ROOTS - 1) fprintf(fp, ",");
             }
-            
+
             if (NUM_ROOTS > 0 && COEFFS_SIZE > 0) fprintf(fp, ",");
-            
+
             // Coefficients
             for (int k = 0; k < COEFFS_SIZE; k++) {
                 fprintf(fp, "%.6f,%.6f", coeffs_3d[i][j][k].real, coeffs_3d[i][j][k].imag);
@@ -72,9 +97,7 @@ void save_to_csv(const char* filename,
 }
 
 
-
-
-void save_split_images(const char* base_filename, unsigned char* big_image, const char* folder = "output") {
+void save_split_images(char names[XFRAC][YFRAC][64], unsigned char* big_image, const char* folder = "output") {
 
 
     char command[256];
@@ -85,7 +108,7 @@ void save_split_images(const char* base_filename, unsigned char* big_image, cons
         for (int j = 0; j < YFRAC; j++) {
             char filename[256];
 
-            snprintf(filename, sizeof(filename), "%s/%s_%d_%d.ppm", folder, base_filename, i, j);
+            snprintf(filename, sizeof(filename), "%s/%s.ppm", folder, names[i][j]);
 
             FILE* fp = fopen(filename, "wb");
             fprintf(fp, "P6\n%d %d\n255\n", WIDTH, HEIGHT);
@@ -103,24 +126,16 @@ void save_split_images(const char* base_filename, unsigned char* big_image, cons
 
 
 void print_help() {
-    printf("Использование:\n");
-    printf("  ./mandelbrot <start_real> <start_imag> [output.ppm]\n\n");
-    printf("Параметры:\n");
-    printf("  start_real    - действительная часть начальной точки z0\n");
-    printf("  start_imag    - мнимая часть начальной точки z0\n");
-    printf("  output.ppm    - имя выходного файла (по умолчанию: mandelbrot.ppm)\n\n");
-    printf("Примеры:\n");
-    printf("  1) Стандартное множество Мандельброта f(z) = z^2:\n");
-    printf("     ./mandelbrot 0 0\n\n");
-    printf("  2) f(z) = -0.3*z + 0.8*z^3:\n");
-    printf("     ./mandelbrot 0 0\n\n");
-    printf("  3) f(z) = z^2 + 0.3/z с начальной точкой (0.1, 0):\n");
-    printf("     ./mandelbrot 0.1 0\n\n");
-    printf("  4) f(z) = (0.5+0.2i)*z^2:\n");
-    printf("     ./mandelbrot 0 0 my_fractal.ppm\n\n");
+    printf("Usage: ./mandelbrot [input.csv] [-c compare.csv]\n\n");
+    printf("Options:\n");
+    printf("  -h, --help           Show this help\n");
+    printf("  -c, --compare FILE   Compare mode: ./mandelbrot file1.csv -c file2.csv\n");
+    printf("                       Outputs difference metric [0.0-1.0]\n\n");
+    printf("Examples:\n");
+    printf("  ./mandelbrot                       # Random fractals\n");
+    printf("  ./mandelbrot data.csv              # Generate from CSV\n");
+    printf("  ./mandelbrot a.csv -c b.csv        # Compare two CSVs\n");
 }
-
-
 
 void print_complex_array_coeffs(Complex arr[XFRAC][YFRAC][COEFFS_SIZE]) {
     for (int i = 0; i < XFRAC; i++) {
@@ -168,17 +183,96 @@ void init_random_complex_array(Complex arr[XFRAC][YFRAC][COEFFS_SIZE],
     }
 }
 
-void init_nan_complex_array(Complex arr[XFRAC][YFRAC][NUM_ROOTS]) {
-    //only for init roots DEPRECATED
-    for (int i = 0; i < XFRAC; i++) {
-        for (int j = 0; j < YFRAC; j++) {
-            for (int k = 0; k < NUM_ROOTS; k++) {
-                arr[i][j][k].real = NAN;
-                arr[i][j][k].imag = NAN;
+
+void init_from_file_complex_array(const char* filename,
+                 Complex coeffs_3d[XFRAC][YFRAC][COEFFS_SIZE],
+                 Complex zeroes_3d[XFRAC][YFRAC][NUM_ROOTS],
+                 char    names[XFRAC][YFRAC][64]) {
+/*
+
+IT WORKS STABLE ONLY FOR SMALL DATASET! TODO FIXME
+IF FUNCTION DOESN'T WORK CHECK YOUR TOTAL SHAPE IS LESS THEN 128 INSTANCES
+
+IN FILE ZEROES IS FIRST AND COEFFS IS LAST AS IN A save_to_csv
+WARNING: IF in filename we have lower than XFRAC*YFRAC rows it generate zerocoeffs fractals
+with name default
+
+In general, we should to read files with ability to be XFRAC*YFRAC len
+
+*/
+    printf("WARNING: THIS FUNCTION DOESN'T WORK WITH MORE THEN 128 INSTANCES! YOU USE %d.\n", XFRAC*YFRAC);
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        printf("Warning: Cannot open file %s. Using defaults.\n", filename);
+        return;
+    }
+    char line[8192];
+
+    if (!fgets(line, sizeof(line), file)) {
+        fclose(file);
+        return;
+    }
+    int row = 0;
+    while (row < XFRAC * YFRAC && fgets(line, sizeof(line), file)) {
+        int i = row / YFRAC;
+        int j = row % YFRAC;
+
+//        printf("DEBUG: Processing row %d/%d\n", row, XFRAC * YFRAC);
+
+        char* ptr = line;
+        
+        char* comma = strchr(ptr, ',');
+        if (comma) {
+            size_t len = comma - ptr;
+            if (len > 63) len = 63;
+            strncpy(names[i][j], ptr, len);
+            names[i][j][len] = '\0';
+            ptr = comma + 1;
+        } else {
+            strcpy(names[i][j], "default");
+            row++;
+            continue;
+        }
+
+        for (int k = 0; k < NUM_ROOTS && ptr; k++) {
+            float real, imag;
+            int consumed = 0;
+            if (sscanf(ptr, "%f,%f%n", &real, &imag, &consumed) == 2) {
+                zeroes_3d[i][j][k].real = real;
+                zeroes_3d[i][j][k].imag = imag;
+                ptr += consumed;
+                if (*ptr == ',') ptr++;
+            } else {
+                break;
             }
         }
+
+        for (int k = 0; k < COEFFS_SIZE && ptr; k++) {
+            float real, imag;
+            int consumed = 0;
+            if (sscanf(ptr, "%f,%f%n", &real, &imag, &consumed) == 2) {
+                coeffs_3d[i][j][k].real = real;
+                coeffs_3d[i][j][k].imag = imag;
+                ptr += consumed;
+                if (*ptr == ',') ptr++;
+            } else {
+                break;
+            }
+        }
+
+        row++;
+    }
+    fclose(file);
+    for (; row < XFRAC * YFRAC; row++) {
+        int i = row / YFRAC;
+        int j = row % YFRAC;
+        strcpy(names[i][j], "default");
+        memset(zeroes_3d[i][j], 0, NUM_ROOTS * sizeof(Complex));
+        memset(coeffs_3d[i][j], 0, COEFFS_SIZE * sizeof(Complex));
     }
 }
+
+
 
 
 void process_coeffs_array(Complex arr[XFRAC][YFRAC][COEFFS_SIZE],

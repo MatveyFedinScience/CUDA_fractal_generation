@@ -6,15 +6,18 @@
 #define MAX_ITER 256
 #define MAX_COEFFS 32
 #define SQUARE_SIDE 8.0f
-#define XFRAC 12
-#define YFRAC 12
+#define SQUARE_SIDE_CH2 16.0f // Not implement yet TODO
+#define SQUARE_SIDE_CH3 32.0f // Not implement yet TODO
+#define XFRAC 8
+#define YFRAC 8
 #define COEFFS_SIZE 2
-#define MIN_POWER 1
+#define MIN_POWER 2
 #define MAX_POWER (MIN_POWER + COEFFS_SIZE - 1)
 #define NUM_ROOTS ((MIN_POWER > 0) ? (MAX_POWER - 1) : (COEFFS_SIZE - 2)) //for derive
 #define RANDOM_SEED 1
 #define FRACTAL_KERNEL_FUNCTION mandelbrot_kernel_color
-//use kernel with appropraite args types!!! FRACTAL_TYPE_kernel_color(unsigned char*, Complex*, Complex*, float, float, float, float)
+//use kernel with appropraite args types!!!
+//FRACTAL_KERNEL_FUNCTION(unsigned char*, Complex*, Complex*, float, float, float, float)
 //Now mandelbrot_kernel_color available and julia_kernel_color still in progress
 #define REGRESSION_PARAMS ( 2 * NUM_ROOTS + 2 * COEFFS_SIZE )
 
