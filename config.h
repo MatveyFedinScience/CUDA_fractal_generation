@@ -7,8 +7,8 @@
 #define MAX_COEFFS 32
 
 #define SQUARE_SIDE 3.0f
-#define SQUARE_SIDE_CH2 6.0f // Not implement yet TODO
-#define SQUARE_SIDE_CH3 12.0f // Not implement yet TODO
+#define SQUARE_SIDE_CH2 3.0f
+#define SQUARE_SIDE_CH3 3.0f
 
 #define CONF_SIDES_VALUES { SQUARE_SIDE, SQUARE_SIDE_CH2, SQUARE_SIDE_CH3 }
 #define CONF_SIDES_COUNT 3
